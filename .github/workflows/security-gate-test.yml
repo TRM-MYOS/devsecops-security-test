@@ -14,5 +14,23 @@ permissions:
 
 jobs:
   security-gate:
-    name: Central Security Gate
-    uses: TRM-MYOS/devsecops-security-platform/.github/workflows/security-scan.yml@main
+    name: Run Central Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Security Gate Test
+        run: |
+          echo "================================"
+          echo "Automated DevSecOps Security Gate"
+          echo "================================"
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref }}"
+          echo ""
+          echo "Security Policy Result: BLOCK"
+          echo "Security Gate: FAILED"
+          echo ""
+          echo "Blocking merge for testing..."
+          exit 1

@@ -2,14 +2,98 @@ name: Security Gate Test
 
 on:
   push:
+    branches:
+      - "test/**"
+
   pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
+  security-gate:
+    name: Run Central Security Scan
+    runs-on: ubuntu-latest
 
-  security:
-    name: Central Security Gate
+    steps:
+      # 1. Checkout source code ที่ต้องการสแกน
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          path: target
 
-    uses: TRM-MYOS/devsecops-security-platform/.github/workflows/security-scan.yml@main
+      # 2. Checkout Private Central Security Platform
+      - name: Checkout central security platform
+        uses: actions/checkout@v4
+        with:
+          repository: TRM-MYOS/devsecops-security-platform
+          token: ${{ secrets.CENTRAL_REPO_TOKEN }}
+          path: .security-platform
+
+      # 3. Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # 4. Install Python dependencies
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit PyYAML
+
+      # 5. Install Trivy
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+            gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
+            sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      # 6. Install Gitleaks
+      - name: Install Gitleaks
+        run: |
+          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          tar -xzf gitleaks_8.28.0_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      # 7. Run Bandit / Trivy / Gitleaks จาก Central Platform
+      - name: Run security scanners
+        run: |
+          PYTHONPATH=.security-platform python - <<'PY'
+          from scanner.security_scanner import run_security_scan
+
+          results = run_security_scan(
+              "target",
+              ".security-platform/reports"
+          )
+
+          print("=== Scanner Execution ===")
+
+          for scanner, result in results.items():
+              print(
+                  f"{scanner}: "
+                  f"returncode={result['returncode']}"
+              )
+          PY
+
+      # 8. วิเคราะห์ผล + Score + Grade + Policy
+      - name: Analyze security results
+        working-directory: .security-platform
+        run: |
+          python -m security.parser
+
+      # 9. Upload reports แม้ Security Gate จะ BLOCK
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: .security-platform/reports/

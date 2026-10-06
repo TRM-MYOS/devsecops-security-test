@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from src.routes.songs import router as songs_router
-import subprocess
 
 
 app = FastAPI(
@@ -25,18 +24,4 @@ def root():
 def health_check():
     return {
         "status": "healthy",
-    }
-
-
-@app.get("/debug")
-def debug_command():
-    command = "echo security-test"
-
-    result = subprocess.call(
-        command,
-        shell=True,
-    )
-
-    return {
-        "returncode": result,
     }

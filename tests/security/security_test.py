@@ -1,38 +1,61 @@
-import subprocess
 import hashlib
+import os
+import subprocess
 import tempfile
+
 import yaml
 
 
-# TEST CASE 1: Bandit B602
-# shell=True with untrusted input
-def run_command(user_input):
-    subprocess.call(user_input, shell=True)
+def run_command(program, args=None):
+    """Run a command without invoking a shell."""
+    command = [program]
+
+    if args:
+        command.extend(args)
+
+    return subprocess.run(
+        command,
+        shell=False,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
-# TEST CASE 2: Bandit B324
-# Weak cryptographic hash
 def hash_password(password):
-    return hashlib.md5(password.encode()).hexdigest()
+    """Example stronger hash for this security test."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
-# TEST CASE 3: Bandit B506
-# Unsafe YAML loading
 def load_config(data):
-    return yaml.load(data, Loader=yaml.Loader)
+    """Safely load YAML data."""
+    return yaml.safe_load(data)
 
 
-# TEST CASE 4: Bandit B108
-# Hardcoded temporary directory
 def save_temp_file(data):
-    path = "/tmp/security_test.txt"
+    """Create a temporary file safely."""
+    fd, path = tempfile.mkstemp(
+        prefix="security_test_",
+        suffix=".txt",
+    )
 
-    with open(path, "w") as f:
-        f.write(data)
+    with os.fdopen(fd, "w", encoding="utf-8") as file:
+        file.write(data)
 
     return path
 
 
-# TEST CASE 5: Bandit B404 / subprocess usage
-def execute_program(command):
-    return subprocess.Popen(command)
+def execute_program(program, args=None):
+    """Execute a program without shell=True."""
+    command = [program]
+
+    if args:
+        command.extend(args)
+
+    return subprocess.run(
+        command,
+        shell=False,
+        check=True,
+        capture_output=True,
+        text=True,
+    )

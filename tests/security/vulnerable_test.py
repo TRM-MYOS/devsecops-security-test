@@ -1,17 +1,22 @@
-import os
-import subprocess
 import sqlite3
 
 
-def command_injection(user_input):
-    subprocess.call(user_input, shell=True)
+def get_user(username):
+    """Safely query a user using a parameterized SQL statement."""
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,),
+        )
+        return cursor.fetchall()
 
 
-def insecure_os_command(user_input):
-    os.system(user_input)
+def main():
+    username = "test_user"
+    users = get_user(username)
+
+    print(f"Users found: {len(users)}")
 
 
-def sql_injection(username):
-    conn = sqlite3.connect("users.db")
-    query = "SELECT * FROM users WHERE username = '" + username + "'"
-    return conn.execute(query).fetchall()
+if __name__ == "__main__":
+    main()

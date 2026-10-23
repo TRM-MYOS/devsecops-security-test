@@ -3,7 +3,7 @@ name: Security Gate Test
 on:
   push:
     branches:
-      - "test/**"
+      - "**"
   pull_request:
     branches:
       - main
